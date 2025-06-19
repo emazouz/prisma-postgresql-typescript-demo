@@ -5,55 +5,342 @@
 // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
 generator client {
-  provider = "prisma-client-js"
-  output   = "../generated/prisma"
+  provider = "prisma-client-js" // مزود عميل Prisma، يقوم بإنشاء عميل TypeScript
+  // output   = "../generated/prisma" // مسار الإخراج للعميل المنشأ
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider = "postgresql" // نوع قاعدة البيانات المستخدمة
+  url      = env("DATABASE_URL") // رابط الاتصال بقاعدة البيانات من متغيرات البيئة
 }
 
+// ==============================================================================
+// ENUMS - تعدادات لتحديد مجموعات من القيم الثابتة
+// ==============================================================================
 
+// أدوار المستخدمين في النظام
+enum UserRole {
+  USER // مستخدم عادي
+  ADMIN // مسؤول
+}
 
+// الجنس
+enum Gender {
+  MEN // رجال
+  WOMEN // نساء
+  UNISEX // للجنسين
+}
 
+// حالة عربة التسوق
+enum CartStatus {
+  PENDING // معلقة
+  PAID // مدفوعة
+  CANCELLED // ملغاة
+}
+
+// حالة الدفع
+enum PaymentStatus {
+  PENDING // لم يتم الدفع بعد
+  COMPLETED // تم الدفع
+  FAILED // فشل الدفع
+  REFUNDED // تم استرداد المبلغ
+}
+
+// حالة الشحن
+enum ShippingStatus {
+  PENDING // لم يتم الشحن بعد
+  SHIPPED // تم شحن الطلب
+  DELIVERED // تم تسليم الطلب
+  CANCELLED // تم إلغاء الشحن
+}
+
+// حالة الطلب
+enum OrderStatus {
+  PENDING // الطلب قيد الانتظار
+  CONFIRMED // تم تأكيد الطلب
+  SHIPPED // تم شحن الطلب
+  DELIVERED // تم تسليم الطلب
+  CANCELLED // تم إلغاء الطلب
+}
+
+// طريقة الشحن
+enum ShippingMethodStatus {
+  STANDARD // توصيل عادي
+  PICKUP // استلام من المتجر
+  EXPRESS // توصيل سريع
+}
+
+enum OrderTrackingStatus {
+  PENDING // لم يتم الشحن بعد
+  SHIPPED // تم شحن الطلب
+  DELIVERED // تم تسليم الطلب
+  CANCELLED // تم إلغاء الشحن
+}
+
+// حالة الشحنة
+enum ShipmentStatus {
+  PENDING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+// ==============================================================================
+// MODELS - نماذج البيانات
+// ==============================================================================
+
+// --- User and Profile Models ---
+
+// نموذج المستخدم: يحتوي على معلومات المستخدم الأساسية وبيانات الاعتماد
 model User {
-  id      Int      @id @default(autoincrement())
-  email   String   @unique
-  name    String?
+  id        Int      @id @default(autoincrement()) // المعرف الفريد للمستخدم
+  email     String   @unique // البريد الإلكتروني (فريد)
+  name      String? // اسم المستخدم (اختياري)
+  avatar    String? // رابط الصورة الرمزية (اختياري)
+  role      UserRole @default(USER) // دور المستخدم، القيمة الافتراضية هي USER
+  gender    Gender? // جنس المستخدم (اختياري)
+  createdAt DateTime @default(now()) // تاريخ إنشاء الحساب
+  updatedAt DateTime @updatedAt // تاريخ آخر تحديث للحساب
+
+  profile Profile? // علاقة واحد-لواحد مع ملف المستخدم الشخصي (Profile)
+  reviews Review[] // قائمة المراجعات التي كتبها المستخدم
+  carts   Cart[] // قائمة عربات التسوق الخاصة بالمستخدم
+  orders  Order[] // قائمة الطلبات التي قام بها المستخدم
 }
 
+// نموذج الملف الشخصي: يحتوي على معلومات إضافية للمستخدم
+model Profile {
+  id        Int       @id @default(autoincrement()) // المعرف الفريد للملف الشخصي
+  firstName String? // الاسم الأول (اختياري)
+  lastName  String? // اسم العائلة (اختياري)
+  birthDate DateTime? // تاريخ الميلاد (اختياري)
+  phone     String? // رقم الهاتف (اختياري)
+  address   String? // العنوان (اختياري)
+  city      String? // المدينة (اختياري)
+  state     String? // الولاية/المقاطعة (اختياري)
+  zip       String? // الرمز البريدي (اختياري)
+  company   String? // الشركة (اختياري)
+  country   String? // البلد (اختياري)
+  createdAt DateTime  @default(now()) // تاريخ إنشاء الملف الشخصي
+  updatedAt DateTime  @updatedAt // تاريخ آخر تحديث للملف الشخصي
 
-model Variation {
-  id Int @id @default(autoincrement())
-  colorName String?
-  color String
-  colorCode String
-  colorImage String
-  image String
-  Product Product[]
+  user   User @relation(fields: [userId], references: [id]) // علاقة مع المستخدم
+  userId Int  @unique // مفتاح خارجي لربط الملف الشخصي بالمستخدم (فريد)
 }
 
+// --- Product and Catalog Models ---
+
+// نموذج الفئة: لتصنيف المنتجات
+model Category {
+  id       Int       @id @default(autoincrement()) // المعرف الفريد للفئة
+  name     String    @unique // اسم الفئة (فريد)
+  products Product[] // قائمة المنتجات ضمن هذه الفئة
+}
+
+// نموذج المنتج: يمثل السلع المعروضة للبيع
 model Product {
-  id Int @id @default(autoincrement())
-  category String
-  type String
-  name String
-  gender String
-  new Boolean
-  sale Boolean
-  rate Int
-  price Int
-  originPrice Int
-  brand String
-  sold Int
-  quantity Int
-  quantityPurchase Int
-  sizes String[]
-  variation Variation[]
-  thumbImage String[]
-  images String[]
-  description String
-  action String
-  slug String
+  id               String   @id @default(uuid()) // المعرف الفريد للمنتج (UUID)
+  name             String // اسم المنتج
+  description      String // وصف المنتج
+  price            Decimal // السعر الحالي
+  originPrice      Decimal // السعر الأصلي قبل الخصم
+  quantity         Int // الكمية المتاحة في المخزون
+  slug             String   @unique // رابط فريد للمنتج (لتحسين محركات البحث)
+  type             String // نوع المنتج
+  gender           Gender // الفئة الجنسية للمنتج
+  brand            String // العلامة التجارية
+  sizes            String[] // قائمة الأحجام المتاحة
+  thumbImage       String[] // صور مصغرة للمنتج
+  images           String[] // صور المنتج
+  new              Boolean  @default(false) // هل المنتج جديد؟
+  sale             Boolean  @default(false) // هل المنتج في التخفيضات؟
+  rate             Float    @default(0) // متوسط تقييم المنتج
+  sold             Int      @default(0) // عدد القطع المباعة
+  quantityPurchase Int      @default(0) // عدد مرات الشراء
+  wishlistState    Boolean  @default(false) // هل المنتج في قائمة الرغبات؟
+  compareState     Boolean  @default(false) // هل المنتج في قائمة المقارنة؟
+  action           String? // إجراء خاص بالمنتج (اختياري)
+  weight           Float // الوزن (ضروري لحساب تكلفة الشحن)
+  createdAt        DateTime @default(now()) // تاريخ إضافة المنتج
+  updatedAt        DateTime @updatedAt // تاريخ آخر تحديث للمنتج
+
+  category   Category @relation(fields: [categoryId], references: [id]) // علاقة مع الفئة
+  categoryId Int // مفتاح خارجي لربط المنتج بالفئة
+
+  variations Variation[] // قائمة متغيرات المنتج (مثل الألوان)
+  reviews    Review[] // قائمة مراجعات المنتج
+  cartItems  CartItem[] // قائمة عناصر عربة التسوق المرتبطة بالمنتج
+  orderItems OrderItem[] // قائمة عناصر الطلبات المرتبطة بالمنتج
+  discounts  Discount[] // قائمة الخصومات على المنتج
+}
+
+// نموذج متغيرات المنتج: تفاصيل مختلفة لنفس المنتج مثل اللون
+model Variation {
+  id         Int     @id @default(autoincrement()) // المعرف الفريد للمتغير
+  colorName  String? // اسم اللون (اختياري)
+  color      String // اللون
+  colorCode  String // كود اللون (Hex)
+  colorImage String // صورة اللون
+  image      String // صورة المتغير
+
+  product   Product @relation(fields: [productId], references: [id]) // علاقة مع المنتج
+  productId String // مفتاح خارجي لربط المتغير بالمنتج
+}
+
+// نموذج الخصم: لتحديد الخصومات على المنتجات
+model Discount {
+  id        Int      @id @default(autoincrement()) // المعرف الفريد للخصم
+  discount  Decimal // نسبة الخصم أو المبلغ
+  startDate DateTime // تاريخ بدء الخصم
+  endDate   DateTime // تاريخ انتهاء الخصم
+
+  product   Product @relation(fields: [productId], references: [id]) // علاقة مع المنتج
+  productId String // مفتاح خارجي لربط الخصم بالمنتج
+}
+
+// --- Review and Blog Models ---
+
+// نموذج المراجعة: تقييمات المستخدمين للمنتجات
+model Review {
+  id        Int      @id @default(autoincrement()) // المعرف الفريد للمراجعة
+  rate      Int // التقييم (من 1 إلى 5)
+  message   String // نص المراجعة
+  color     String // لون المنتج الذي تمت مراجعته
+  size      String // حجم المنتج الذي تمت مراجعته
+  createdAt DateTime @default(now()) // تاريخ إنشاء المراجعة
+  updatedAt DateTime @updatedAt // تاريخ آخر تحديث للمراجعة
+
+  user   User @relation(fields: [userId], references: [id]) // علاقة مع المستخدم
+  userId Int // مفتاح خارجي لربط المراجعة بالمستخدم
+
+  product   Product @relation(fields: [productId], references: [id]) // علاقة مع المنتج
+  productId String // مفتاح خارجي لربط المراجعة بالمنتج
+
+  reply Reply? // الرد على المراجعة (علاقة واحد-لواحد)
+}
+
+// نموذج الرد: رد على مراجعة معينة
+model Reply {
+  id        Int      @id @default(autoincrement()) // المعرف الفريد للرد
+  message   String // نص الرد
+  createdAt DateTime @default(now()) // تاريخ إنشاء الرد
+  updatedAt DateTime @updatedAt // تاريخ آخر تحديث للرد
+
+  review   Review @relation(fields: [reviewId], references: [id]) // علاقة مع المراجعة
+  reviewId Int    @unique // مفتاح خارجي لربط الرد بالمراجعة (فريد)
+}
+
+// نموذج المدونة: مقالات ومحتوى المدونة
+model Blog {
+  id          Int      @id @default(autoincrement()) // المعرف الفريد للمقالة
+  title       String // عنوان المقالة
+  date        String // تاريخ النشر
+  thumbImg    String // صورة مصغرة للمقالة
+  coverImg    String // صورة الغلاف للمقالة
+  subImg      String[] // صور إضافية للمقالة
+  shortDesc   String // وصف قصير للمقالة
+  description String // المحتوى الكامل للمقالة
+  author      String // اسم الكاتب
+  avatar      String // صورة الكاتب الرمزية
+  category    String // فئة المقالة
+  tag         String // الوسوم (Tags)
+  slug        String   @unique // رابط فريد للمقالة
+  createdAt   DateTime @default(now()) // تاريخ إنشاء المقالة
+  updatedAt   DateTime @updatedAt // تاريخ آخر تحديث للمقالة
+}
+
+// --- E-commerce Models (Cart, Order) ---
+
+// نموذج عربة التسوق: لتخزين المنتجات التي ينوي المستخدم شراءها
+model Cart {
+  id                Int            @id @default(autoincrement()) // المعرف الفريد للعربة
+  total             Decimal        @default(0) // إجمالي المبلغ في العربة
+  totalWithDiscount Decimal        @default(0) // الإجمالي بعد تطبيق الخصم
+  status            CartStatus     @default(PENDING) // حالة العربة (معلقة، مدفوعة، إلخ)
+  paymentStatus     PaymentStatus  @default(PENDING) // حالة الدفع
+  shippingStatus    ShippingStatus @default(PENDING) // حالة الشحن
+  discountCode      String? // رمز الخصم المطبق على العربة
+  discountAmount    Decimal        @default(0) // المبلغ المخصوم
+  notes             String? // ملاحظات المستخدم على العربة
+  createdAt         DateTime       @default(now()) // تاريخ الإنشاء
+  updatedAt         DateTime       @updatedAt // تاريخ التحديث الأخير
+
+  user   User @relation(fields: [userId], references: [id]) // علاقة مع المستخدم
+  userId Int // مفتاح خارجي لربط العربة بالمستخدم
+
+  cartItems CartItem[] // العناصر الموجودة في العربة
+}
+
+// نموذج عناصر عربة التسوق: يمثل منتجًا معينًا داخل عربة التسوق
+model CartItem {
+  id        Int      @id @default(autoincrement()) // معرّف العنصر
+  quantity  Int      @default(1) // الكمية
+  price     Decimal // السعر الفردي للمنتج عند إضافته للعربة
+  createdAt DateTime @default(now()) // تاريخ الإنشاء
+  updatedAt DateTime @updatedAt // تاريخ التحديث الأخير
+
+  cart   Cart @relation(fields: [cartId], references: [id]) // علاقة مع عربة التسوق
+  cartId Int // مفتاح خارجي لربط العنصر بالعربة
+
+  product   Product @relation(fields: [productId], references: [id]) // علاقة مع المنتج
+  productId String // مفتاح خارجي لربط العنصر بالمنتج
+}
+
+// نموذج الطلب: يمثل طلبًا مؤكدًا من قبل المستخدم
+model Order {
+  id              Int                  @id @default(autoincrement()) // معرف الطلب
+  totalAmount     Decimal              @default(0) // المبلغ الإجمالي للطلب
+  paymentStatus   PaymentStatus        @default(PENDING) // حالة الدفع
+  shippingStatus  ShippingStatus       @default(PENDING) // حالة الشحن
+  shippingAddress String // عنوان الشحن
+  shippingMethod  ShippingMethodStatus @default(STANDARD) // طريقة الشحن (مثل: توصيل سريع، توصيل عادي)
+  orderStatus     OrderStatus          @default(PENDING) // حالة الطلب (مثل: تم التأكيد، جاري الشحن، إلخ)
+  paymentMethod   String // طريقة الدفع (مثل: بطاقة ائتمان، باي بال، إلخ)
+  createdAt       DateTime             @default(now()) // تاريخ إنشاء الطلب
+  updatedAt       DateTime             @updatedAt // تاريخ آخر تحديث للطلب
+
+  user   User @relation(fields: [userId], references: [id]) // علاقة مع المستخدم
+  userId Int // معرف المستخدم الذي قام بالطلب
+
+  orderItems OrderItem[] // العناصر المرتبطة بالطلب
+  tracking   OrderTracking? // معلومات تتبع الطلب
+  Shipment   Shipment[]
+}
+
+// نموذج عناصر الطلب: يمثل منتجًا معينًا داخل طلب
+model OrderItem {
+  id        Int      @id @default(autoincrement()) // معرف العنصر في الطلب
+  quantity  Int      @default(1) // الكمية المطلوبة
+  price     Decimal // السعر الفردي للمنتج عند وقت الطلب
+  createdAt DateTime @default(now()) // تاريخ إضافة العنصر للطلب
+  updatedAt DateTime @updatedAt // تاريخ آخر تحديث للعنصر
+
+  order   Order @relation(fields: [orderId], references: [id]) // علاقة مع الطلب
+  orderId Int // معرف الطلب المرتبط بهذا العنصر
+
+  product   Product @relation(fields: [productId], references: [id]) // علاقة مع المنتج
+  productId String // معرف المنتج
+}
+
+// نموذج تتبع الطلب: لتتبع حالة شحن الطلب
+model OrderTracking {
+  id             Int                 @id @default(autoincrement()) // المعرف الفريد
+  trackingNumber String // رقم التتبع
+  status         OrderTrackingStatus @default(PENDING) // حالة الشحن (تم الشحن، قيد التسليم، إلخ)
+  updatedAt      DateTime            @updatedAt // تاريخ آخر تحديث لحالة التتبع
+
+  order   Order @relation(fields: [orderId], references: [id]) // علاقة مع الطلب
+  orderId Int   @unique // مفتاح خارجي لربط التتبع بالطلب (فريد)
+}
+
+// معلومات عن الشحنات
+model Shipment {
+  id               Int            @id @default(autoincrement())
+  trackingNumber   String
+  status           ShipmentStatus
+  shippingDate     DateTime
+  estimatedArrival DateTime
+  carrier          String // مثل UPS, DHL, FedEx
+  orderId          Int
+  order            Order          @relation(fields: [orderId], references: [id])
 }
